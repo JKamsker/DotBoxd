@@ -12,14 +12,14 @@ public sealed record PluginManifest(
     IReadOnlyList<LiveSettingDefinition> LiveSettings,
     IReadOnlyList<HookSubscriptionManifest> Subscriptions)
 {
-    private IReadOnlyList<string> _effects = PluginModelCopy.List(Effects);
-    private IReadOnlyList<LiveSettingDefinition> _liveSettings = PluginModelCopy.List(LiveSettings);
-    private IReadOnlyList<HookSubscriptionManifest> _subscriptions = PluginModelCopy.List(Subscriptions);
+    private IReadOnlyList<string> _effects = PluginModelCopy.List(Effects, nameof(Effects));
+    private IReadOnlyList<LiveSettingDefinition> _liveSettings = PluginModelCopy.List(LiveSettings, nameof(LiveSettings));
+    private IReadOnlyList<HookSubscriptionManifest> _subscriptions = PluginModelCopy.List(Subscriptions, nameof(Subscriptions));
     private IReadOnlyList<string> _requiredCapabilities = [];
 
-    public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
-    public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
-    public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
+    public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value, nameof(Effects)); }
+    public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value, nameof(LiveSettings)); }
+    public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value, nameof(Subscriptions)); }
 
     /// <summary>
     /// Capabilities the verified IR requires — derived by the analyzer from what the kernel actually
