@@ -31,7 +31,7 @@ internal static class RegistrationAccumulatorModelFactory
 
         try
         {
-            EnsureTopLevel(type);
+            EnsureSupportedReceiverType(type, declaration);
             var attribute = context.Attributes[0];
             var accumulatorName = RequiredStringArgument(attribute, 0, "accumulator name");
             var methodName = RequiredStringArgument(attribute, 1, "method name");
@@ -70,7 +70,7 @@ internal static class RegistrationAccumulatorModelFactory
 
         try
         {
-            EnsureTopLevel(type);
+            EnsureSupportedReceiverType(type, declaration);
             var accumulatorName = RequiredStringArgument(context.Attributes[0], 0, "accumulator name");
             ValidateIdentifier(accumulatorName, "Accumulator");
             ValidateGeneratedTypeName(type, accumulatorName);
@@ -88,12 +88,17 @@ internal static class RegistrationAccumulatorModelFactory
         }
     }
 
-    private static void EnsureTopLevel(INamedTypeSymbol type)
+    private static void EnsureSupportedReceiverType(INamedTypeSymbol type, TypeDeclarationSyntax declaration)
     {
         if (type.ContainingType is not null)
         {
             throw new NotSupportedException(
                 $"Registration accumulator generation supports top-level control types; '{type.ToDisplayString()}' is nested.");
+        }
+
+        if (declaration.Modifiers.Any(static modifier => modifier.IsKind(SyntaxKind.FileKeyword)))
+        {
+            throw new NotSupportedException($"Registration accumulator generation cannot reference file-local control type '{declaration.Identifier.ValueText}' from a separate generated file.");
         }
     }
 
